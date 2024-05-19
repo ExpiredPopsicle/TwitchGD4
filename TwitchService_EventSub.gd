@@ -197,7 +197,7 @@ func eventsub_inject_packet(packet_text):
 			if result_dict["metadata"]["message_type"] == "notification":
 				_client_eventsub_handle_message(
 					result_dict["payload"]["subscription"]["type"],
-					JSON.parse_string(str(result_dict["payload"]["event"])))
+					result_dict["payload"]["event"])
 
 func _client_eventsub_connect_to_twitch():
 	
