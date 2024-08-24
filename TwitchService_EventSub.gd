@@ -40,9 +40,8 @@ func _sub_fetch_request_completed(_result: int,
 
 func _make_sub_request(json_data):
 	_twitch_sub_fetch_http_client = HTTPRequest.new()
-	_twitch_sub_fetch_http_client.set_name("temp_request")
+	_twitch_sub_fetch_http_client.set_name("temp_request_eventsub_sub_request")
 	twitch_service.add_child(_twitch_sub_fetch_http_client)
-	_twitch_sub_fetch_http_client.set_name("temp_request")
 	_twitch_sub_fetch_http_client.request_completed.connect(
 		self._sub_fetch_request_completed)
 		
@@ -139,12 +138,36 @@ func _client_eventsub_handle_connection_established(_peer_id : int):
 	}
 	_make_sub_request(cheer_event_registration_json)
 	
+	var redeem_event_registration_json = {
+		"type": "channel.channel_points_custom_reward_redemption.add",
+		"version": "1",
+		"condition": {
+			"broadcaster_user_id": str(twitch_service._twitch_user_id)
+		},
+		"transport": {
+			"method": "websocket",
+			"session_id": _eventsub_session_id,
+		}
+	}
+	_make_sub_request(redeem_event_registration_json)
+
+	var chat_message_event_registration_json = {
+		"type": "channel.chat.message",
+		"version": "1",
+		"condition": {
+			"broadcaster_user_id": str(twitch_service._twitch_user_id),
+			"user_id": str(twitch_service._twitch_user_id)
+		},
+		"transport": {
+			"method": "websocket",
+			"session_id": _eventsub_session_id,
+		}
+	}
+	_make_sub_request(chat_message_event_registration_json)
 
 func _client_eventsub_handle_reward_redeemed(title, username, display_name, user_input):
-	# FIXME: Redundant with pubsub?
-	#emit_signal("handle_channel_points_redeem",
-	#	username, display_name, title, user_input)
-	pass
+	twitch_service.handle_channel_points_redeem.emit(
+		username, display_name, title, user_input)
 
 func _client_eventsub_handle_message(type, message):
 
@@ -152,8 +175,10 @@ func _client_eventsub_handle_message(type, message):
 
 	#print("_client_eventsub_handle_message - " + str(type) + "\n" + str(message))
 	match type:
+
 		"channel.update":
 			print("channel update event - " + str(message["title"]))
+
 		"channel.follow":
 			print("channel follow event - " + str(message["user_name"]))
 			# FIXME: Cleanup -Kiri
@@ -162,25 +187,58 @@ func _client_eventsub_handle_message(type, message):
 			twitch_service.handle_user_followed.emit(
 				message["user_login"],
 				message["user_name"])
+
 		"channel.subscribe":
 			print("channel subscribe event - " + str(message["user_name"]))
+
 		"channel.subscription.gift":
 			print("channel subscription gift event - " + str(message["user_name"]) + \
 			" gifted " + str(message["total"]))
+
 		"channel.subscription.message":
+			# FIXME
 			#print("channel subscription message event - " + str(message["user_name"]) + \
 			#" for " + str(message["cumulative_months"]) + " months")
-			print(message)
 			pass
+
 		"channel.cheer":
 			print("channel cheer event - " + str(message["user_name"]) + \
 			" cheered for " + str(message["bits"]) + " bits")
-	
-				
+
+		"channel.channel_points_custom_reward_redemption.add":
+			print("Got redeem: ", message)
+			_client_eventsub_handle_reward_redeemed(
+				message["reward"]["title"],
+				message["user_login"],
+				message["user_name"],
+				message["user_input"])
+
+		"channel.chat.message":
+
+			var output_fragment_list : Array = []
+			var total_bits : int = 0
+
+			# Assemble message fragments into the bits we need.
+			for frag in message["message"]["fragments"]:
+				var new_fragment : Dictionary = {}
+				if frag["type"] == "emote":
+					new_fragment["twitch_emote_id"] = frag["emote"]["id"]
+				if frag["type"] == "cheermote":
+					total_bits += int(frag["cheermote"]["bits"])
+				new_fragment["text"] = frag["text"]
+				output_fragment_list.append(new_fragment)
+
+			twitch_service.handle_channel_chat_message_v2.emit(
+				message["chatter_user_login"],
+				message["chatter_user_name"],
+				message["message"]["text"],
+				output_fragment_list,
+				total_bits)
+
+
 func _client_eventsub_handle_data_received():
 	var result_str = _client_eventsub.get_packet().get_string_from_utf8()
 	eventsub_inject_packet(result_str)
-
 
 # Inject a packet to handle a eventsub message. This is used for both real and
 # fake (testing) packets.
@@ -241,7 +299,7 @@ func _client_eventsub_update(delta):
 
 	var err = _client_eventsub.get_packet_error()
 	if err != OK:
-		print("EventSub ERROR!!!! ", err)
+		push_error("EventSub client error: ", error_string(err))
 
 	while _client_eventsub.get_available_packet_count():
 		_client_eventsub_handle_data_received()
@@ -261,4 +319,3 @@ func _client_eventsub_update(delta):
 			_client_eventsub_time_to_reconnect = 20.0
 
 	_client_eventsub.poll()
-

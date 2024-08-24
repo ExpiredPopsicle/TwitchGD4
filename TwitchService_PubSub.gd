@@ -1,3 +1,9 @@
+# Twitch PubSub handling.
+#
+# This file is mostly deprecated now, given that we have EventSub support. It's
+# staying here for now just in case there's something we really need PubSub over
+# EventSub for.
+
 extends RefCounted
 class_name TwitchService_PubSub
 
@@ -44,6 +50,8 @@ func _client_pubsub_handle_connection_established(_peer_id : int):
 		"nonce" : "ChannelPoints",
 		"data" : {
 			"topics" : [
+				# TODO: Add any extra subscription types we don't want to handle
+				# through EventSub here.
 				"channel-points-channel-v1." + str(twitch_service._twitch_user_id),
 				"channel-bits-events-v1." + str(twitch_service._twitch_user_id)
 			],
@@ -53,24 +61,14 @@ func _client_pubsub_handle_connection_established(_peer_id : int):
 	var event_registration_data = JSON.stringify(event_registration_json)
 	_client_pubsub.send_text(event_registration_data)
 
-func _client_pubsub_handle_reward_redeemed(title, username, display_name, user_input):
-	twitch_service.emit_signal("handle_channel_points_redeem",
-		username, display_name, title, user_input)
-
 func _client_pubsub_handle_message(_topic, message):
+	# TODO: Fill in any events here that we don't want to handle through
+	# EventSub, for whatever reason.
 
 	if "type" in message.keys():
-		if message["type"] == "reward-redeemed":
-			var user_input = ""
-			if "user_input" in message["data"]["redemption"]:
-				user_input = message["data"]["redemption"]["user_input"]
-		
-			_client_pubsub_handle_reward_redeemed(
-				message["data"]["redemption"]["reward"]["title"],
-				message["data"]["redemption"]["user"]["login"],
-				message["data"]["redemption"]["user"]["display_name"],
-				user_input)
-				
+		# TODO: Check type, eg "reward-redeemed".
+		pass
+
 func _client_pubsub_handle_data_received():
 	var result_str = _client_pubsub.get_packet().get_string_from_utf8()
 	pubsub_inject_packet(result_str)
@@ -127,7 +125,7 @@ func _client_pubsub_update(delta):
 
 	var err = _client_pubsub.get_packet_error()
 	if err != OK:
-		print("ERROR!!!! ", err)
+		push_error("PubSub client error: ", error_string(err))
 
 	while _client_pubsub.get_available_packet_count():
 		_client_pubsub_handle_data_received()

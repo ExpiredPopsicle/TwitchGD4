@@ -11,10 +11,28 @@ var _oauth_tcpserver : TCPServer = null
 var _oauth_streampeertcp : StreamPeerTCP = null
 var _oauth_streampeertcp_inputbuffer : String = ""
 
+# FIXME: Make this configurable.
 var _twitch_redirect_port = 3017
+
+var _scopes_needed : PackedStringArray = [
+	"channel:read:redemptions",
+	"chat:read",
+	"bits:read",
+	"channel:read:subscriptions",
+	"moderator:read:followers",
+	"bits:read",
+	"user:read:chat"
+]
 
 func init(parent_twitch_service):
 	twitch_service = parent_twitch_service
+
+	# Kick off an OAuth process immediately if we don't have authorized scopes
+	# we need.
+	for scope in _scopes_needed:
+		if not (scope in twitch_service.twitch_scopes):
+			_start_oauth_process()
+			break
 
 func _stop_oauth_process():
 
@@ -118,6 +136,7 @@ func _poll_oauth_server():
 							if len(arg_parts) > 1:
 								if arg_parts[0] == "access_token":
 									twitch_service.twitch_oauth = arg_parts[1]
+									twitch_service.twitch_scopes = _scopes_needed.duplicate()
 
 					# Send webpage and disconnect.
 					_oauth_send_page_data(_oauth_streampeertcp, html_response)
@@ -145,22 +164,8 @@ func _start_oauth_process():
 			(k >= 65 and k <= 90) or \
 			(k >= 97 and k <= 122) or \
 			(k >= 48 and k <= 57))
-
-	# Notes on scopes used in this URL:
-	#   channel:read:redemptions - Needed for point redeems.
-	#   chat:read                - Needed for reading chat (and raids?).
-	#   bits:read                - Needed for reacting to bit donations.
 	
-	var scope_array = [
-		"channel:read:redemptions",
-		"chat:read",
-		"bits:read",
-		"channel:read:subscriptions",
-		"moderator:read:followers",
-		"bits:read"
-	]
-	
-	var scope_str = " ".join(scope_array)
+	var scope_str = " ".join(_scopes_needed)
 	scope_str = scope_str.uri_encode()
 
 	var oauth_url = "https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=" + \
