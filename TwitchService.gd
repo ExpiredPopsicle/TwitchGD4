@@ -22,9 +22,13 @@ class_name TwitchService
 ## Scopes that have been authorized.
 @export var twitch_scopes : PackedStringArray = []
 
+## Location to act as the root for all the config data. twitch_config_path and
+## images_cache_path are relative to this. Also set in the constructor.
+@export var config_root : String = "user://"
+
 ## Location to store config once it's set, so you don't have to go through the
 ## token generation flow all the time.
-@export var twitch_config_path : String = "user://twitch_config.ini"
+@export var twitch_config_path : String = "twitch_config.ini"
 
 ## Automatically save credentials on startup and any time set_twitch_credentials
 ## is called.
@@ -34,7 +38,7 @@ class_name TwitchService
 @export var auto_load_credentials : bool = true
 
 ## Path to save downloaded images to.
-@export var images_cache_path : String = "user://_twitch_images"
+@export var images_cache_path : String = "_twitch_images"
 
 # -----------------------------------------------------------------------------
 # Signals
@@ -171,7 +175,7 @@ func load_config():
 		return
 
 	var config = ConfigFile.new()
-	var err = config.load(twitch_config_path)
+	var err = config.load(config_root.path_join(twitch_config_path))
 	if err != OK:
 		return
 
@@ -195,7 +199,7 @@ func save_config():
 	config.set_value("twitch", "twitch_username", twitch_username)
 	config.set_value("twitch", "twitch_oauth_token", twitch_oauth)
 	config.set_value("twitch", "twitch_scopes", ",".join(twitch_scopes))
-	config.save(twitch_config_path)
+	config.save(config_root.path_join(twitch_config_path))
 
 func set_twitch_credentials(username, oauth_token, scopes):
 
@@ -269,7 +273,7 @@ func _sanitize_string(s : String) -> String:
 ## Delete all cached images. Do this now and then so you can reflect avatar
 ## updates by removing stale, outdated images. Or just free up disk space.
 func purge_image_cache():
-	var dir : DirAccess = DirAccess.open(images_cache_path)
+	var dir : DirAccess = DirAccess.open(config_root.path_join(images_cache_path))
 
 	if not dir:
 		# Directory doesn't even exist?
@@ -312,7 +316,7 @@ func fetch_image_async(cache_id : String, image_url : String):
 
 	# Check for existing file before firing off a request.
 	for extension in _image_extensions_recognized:
-		var path_to_test = images_cache_path.path_join(cache_id + extension)
+		var path_to_test = config_root.path_join(images_cache_path).path_join(cache_id + extension)
 		if FileAccess.file_exists(path_to_test):
 			return path_to_test
 
@@ -356,9 +360,9 @@ func fetch_image_async(cache_id : String, image_url : String):
 	if results[3].slice(0, 8) == PackedByteArray([0xff, 0xd8, 0xff]):
 		extension = ".jpg"
 
-	var image_output_path : String = images_cache_path.path_join(cache_id + extension)
+	var image_output_path : String = config_root.path_join(images_cache_path).path_join(cache_id + extension)
 
-	DirAccess.make_dir_absolute(images_cache_path)
+	DirAccess.make_dir_absolute(config_root.path_join(images_cache_path))
 
 	var out_file : FileAccess = FileAccess.open(image_output_path, FileAccess.WRITE)
 	out_file.store_buffer(results[3])
