@@ -304,7 +304,7 @@ func fetch_emote_async(emote_id : String):
 ## Download an emote asynchronously or lookup a cached emote.
 func fetch_user_profile_image_async(user_login : String):
 	var user_login_san : String = _sanitize_string(user_login)
-	var user_data : Dictionary = await lookup_user_async(user_login_san)
+	var user_data = await lookup_user_async(user_login_san)
 	if user_data:
 		return await fetch_image_async(
 			"profile_" + user_login_san, user_data["profile_image_url"])
