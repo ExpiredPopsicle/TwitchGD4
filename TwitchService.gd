@@ -111,6 +111,10 @@ func _user_id_request_completed(
 			_twitch_user_id_fetch_http_client = null
 		return
 
+	if parsed_result == null:
+		push_error("No data returned from Twitch packet.")
+		return
+
 	# Get the user ID and login from the incoming Twitch data.
 	_twitch_user_id = -1
 	for user in parsed_result["data"]:
