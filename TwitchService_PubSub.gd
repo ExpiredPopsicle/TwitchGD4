@@ -37,7 +37,7 @@ func _client_pubsub_send_ping():
 	var ping_data = JSON.stringify(ping_json)
 	_client_pubsub.send_text(ping_data)
 	
-	print("pubsub ping!")
+	#print("pubsub ping!")
 
 func _client_pubsub_handle_connection_established(_peer_id : int):
 

@@ -16,7 +16,7 @@ func init(parent_twitch_service):
 
 func _client_eventsub_fail_and_restart(_error_message):
 	_client_eventsub_time_to_reconnect = 10.0
-	print("_client_eventsub_fail_and_restart - " + _error_message)
+	#print("_client_eventsub_fail_and_restart - " + _error_message)
 
 func _client_eventsub_handle_connection_closed(_peer_id : int):
 	_client_eventsub_fail_and_restart("EventSub Connection closed")
@@ -31,7 +31,7 @@ func _sub_fetch_request_completed(_result: int,
 	
 	var parsed_result = JSON.parse_string(body.get_string_from_utf8())
 	var parsed_string = JSON.stringify(parsed_result)
-	print("Sub Fetch - " + parsed_string)
+	#print("Sub Fetch - " + parsed_string)
 
 	# If we get an authorization error, we need to re-do the oauth setup.
 	if response_code == 401:
@@ -177,10 +177,11 @@ func _client_eventsub_handle_message(type, message):
 	match type:
 
 		"channel.update":
-			print("channel update event - " + str(message["title"]))
+			#print("channel update event - " + str(message["title"]))
+			pass
 
 		"channel.follow":
-			print("channel follow event - " + str(message["user_name"]))
+			#print("channel follow event - " + str(message["user_name"]))
 			# FIXME: Cleanup -Kiri
 			#print("channel follow event - " + str(message["user_login"]))
 			#print(str(message))
@@ -189,11 +190,13 @@ func _client_eventsub_handle_message(type, message):
 				message["user_name"])
 
 		"channel.subscribe":
-			print("channel subscribe event - " + str(message["user_name"]))
+			#print("channel subscribe event - " + str(message["user_name"]))
+			pass
 
 		"channel.subscription.gift":
-			print("channel subscription gift event - " + str(message["user_name"]) + \
-			" gifted " + str(message["total"]))
+			#print("channel subscription gift event - " + str(message["user_name"]) + \
+			#" gifted " + str(message["total"]))
+			pass
 
 		"channel.subscription.message":
 			# FIXME
@@ -202,11 +205,12 @@ func _client_eventsub_handle_message(type, message):
 			pass
 
 		"channel.cheer":
-			print("channel cheer event - " + str(message["user_name"]) + \
-			" cheered for " + str(message["bits"]) + " bits")
+			pass
+			#print("channel cheer event - " + str(message["user_name"]) + \
+			#" cheered for " + str(message["bits"]) + " bits")
 
 		"channel.channel_points_custom_reward_redemption.add":
-			print("Got redeem: ", message)
+			#print("Got redeem: ", message)
 			_client_eventsub_handle_reward_redeemed(
 				message["reward"]["title"],
 				message["user_login"],
@@ -266,7 +270,7 @@ func _client_eventsub_connect_to_twitch():
 	# https://dev.twitch.tv/console/apps
 	#
 	assert(twitch_service.twitch_client_id != "")
-	print(_client_eventsub.get_ready_state())
+
 	# Attempt connection.
 	var err = _client_eventsub.connect_to_url(_twitch_eventsub_url)
 	if err != OK:
