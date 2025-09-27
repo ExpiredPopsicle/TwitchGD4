@@ -155,7 +155,7 @@ func irc_inject_packet(packet_text):
 							"handle_channel_raid",
 							parsed_message["tags"]["msg-param-login"],
 							parsed_message["tags"]["msg-param-displayName"],
-							parsed_message["tags"]["msg-param-viewerCount"])
+							parsed_message["tags"]["msg-param-viewerCount"].to_int())
 
 			# Handle incoming messages, including bit cheers.
 			if parsed_message["command"].to_lower() == "privmsg":
