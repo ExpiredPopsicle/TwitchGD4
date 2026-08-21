@@ -276,50 +276,29 @@ func _client_eventsub_connect_to_twitch():
 	if err != OK:
 		_client_eventsub_fail_and_restart("EventSub Connection failed: " + str(err))
 		return
-	
-	# Wait for the connection to be fully established.
-	_client_eventsub.poll()
-	while _client_eventsub.get_ready_state() == WebSocketPeer.STATE_CONNECTING:
-		_client_eventsub.poll()
-	
-	# Handle failed connections.
-	if _client_eventsub.get_ready_state() == WebSocketPeer.STATE_CLOSING:
-		return
-	if _client_eventsub.get_ready_state() == WebSocketPeer.STATE_CLOSED:
-		return
 
-	# Send subscription messages.
 	_client_eventsub.poll()
-	# The following was causing errors for some reason:
-	#_client_eventsub_handle_connection_established(1)
-	_client_eventsub.poll()
+
 
 func _client_eventsub_update(delta):
+	# WebSocketPeer is created with STATE_CLOSED, so it connects right away.
+	if _client_eventsub.get_ready_state() == WebSocketPeer.STATE_CLOSED:
+		_client_eventsub_time_to_reconnect -= delta
+		if _client_eventsub_time_to_reconnect < 0.0:
+			# Reconnect to Twitch websocket.
+			_client_eventsub_connect_to_twitch()
+			# Whatever happens, set a default reconnect delay.
+			_client_eventsub_time_to_reconnect = 20.0
+		return
+
+	_client_eventsub.poll()
 
 	if twitch_service._twitch_user_id == -1:
 		return
-
-	_client_eventsub.poll()
 
 	var err = _client_eventsub.get_packet_error()
 	if err != OK:
 		push_error("EventSub client error: ", error_string(err))
 
-	while _client_eventsub.get_available_packet_count():
+	if _client_eventsub.get_available_packet_count():
 		_client_eventsub_handle_data_received()
-		_client_eventsub.poll()
-
-	# See if we need to reconnect.
-	if _client_eventsub.get_ready_state() == WebSocketPeer.STATE_CLOSED:
-
-		_client_eventsub_time_to_reconnect -= delta
-
-		if _client_eventsub_time_to_reconnect < 0.0:
-
-			# Reconnect to Twitch websocket.
-			_client_eventsub_connect_to_twitch()
-
-			# Whatever happens, set a default reconnect delay.
-			_client_eventsub_time_to_reconnect = 20.0
-
-	_client_eventsub.poll()
