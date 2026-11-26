@@ -35,7 +35,7 @@ func _sub_fetch_request_completed(_result: int,
 
 	# If we get an authorization error, we need to re-do the oauth setup.
 	if response_code == 401:
-		twitch_service._start_oauth_process()
+		twitch_service.twitch_service_oauth._start_oauth_process()
 		return
 
 func _make_sub_request(json_data):
